@@ -31,16 +31,17 @@ param useAPIM bool = false
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
 
-param tags object = {}
+param tags string = ''
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
-var tagsEnv = union(empty(json(tags)) ? {} : json(tags), { 'azd-env-name': environmentName })
+var azdTags = { 'azd-env-name': environmentName }
+var updatedTags = union(empty(json(tags)) ? {} : json(tags), azdTag)
 
 // Organize resources in a resource group
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: !empty(resourceGroupName) ? resourceGroupName : '${abbrs.resourcesResourceGroups}${environmentName}'
   location: location
-  tags: tagsEnv
+  tags: updatedTags
 }
 
 // The application frontend
@@ -50,7 +51,7 @@ module web './app/web.bicep' = {
   params: {
     name: !empty(webServiceName) ? webServiceName : '${abbrs.webSitesAppService}web-${resourceToken}'
     location: location
-    tags: tags
+    tags: azdTags
     applicationInsightsName: monitoring.outputs.applicationInsightsName
     appServicePlanId: appServicePlan.outputs.id
   }
@@ -63,7 +64,7 @@ module api './app/api.bicep' = {
   params: {
     name: !empty(apiServiceName) ? apiServiceName : '${abbrs.webSitesAppService}api-${resourceToken}'
     location: location
-    tags: tags
+    tags: azdTags
     applicationInsightsName: monitoring.outputs.applicationInsightsName
     appServicePlanId: appServicePlan.outputs.id
     keyVaultName: keyVault.outputs.name
@@ -94,7 +95,7 @@ module cosmos './app/db.bicep' = {
     accountName: !empty(cosmosAccountName) ? cosmosAccountName : '${abbrs.documentDBDatabaseAccounts}${resourceToken}'
     databaseName: cosmosDatabaseName
     location: location
-    tags: tags
+    tags: azdTags
     keyVaultName: keyVault.outputs.name
   }
 }
@@ -106,7 +107,7 @@ module appServicePlan './core/host/appserviceplan.bicep' = {
   params: {
     name: !empty(appServicePlanName) ? appServicePlanName : '${abbrs.webServerFarms}${resourceToken}'
     location: location
-    tags: tags
+    tags: azdTags
     sku: {
       name: 'B1'
     }
@@ -120,7 +121,7 @@ module keyVault './core/security/keyvault.bicep' = {
   params: {
     name: !empty(keyVaultName) ? keyVaultName : '${abbrs.keyVaultVaults}${resourceToken}'
     location: location
-    tags: tags
+    tags: azdTags
     principalId: principalId
   }
 }
@@ -131,7 +132,7 @@ module monitoring './core/monitor/monitoring.bicep' = {
   scope: rg
   params: {
     location: location
-    tags: tags
+    tags: azdTags
     logAnalyticsName: !empty(logAnalyticsName) ? logAnalyticsName : '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
     applicationInsightsName: !empty(applicationInsightsName) ? applicationInsightsName : '${abbrs.insightsComponents}${resourceToken}'
     applicationInsightsDashboardName: !empty(applicationInsightsDashboardName) ? applicationInsightsDashboardName : '${abbrs.portalDashboards}${resourceToken}'
@@ -145,7 +146,7 @@ module apim './core/gateway/apim.bicep' = if (useAPIM) {
   params: {
     name: !empty(apimServiceName) ? apimServiceName : '${abbrs.apiManagementService}${resourceToken}'
     location: location
-    tags: tags
+    tags: azdTags
     applicationInsightsName: monitoring.outputs.applicationInsightsName
   }
 }
