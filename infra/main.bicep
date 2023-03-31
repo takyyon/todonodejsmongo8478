@@ -31,15 +31,16 @@ param useAPIM bool = false
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
 
+param tags object = {}
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
-var tags = { 'azd-env-name': environmentName }
+var tagsEnv = union(tags, { 'azd-env-name': environmentName })
 
 // Organize resources in a resource group
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: !empty(resourceGroupName) ? resourceGroupName : '${abbrs.resourcesResourceGroups}${environmentName}'
   location: location
-  tags: tags
+  tags: tagsEnv
 }
 
 // The application frontend
